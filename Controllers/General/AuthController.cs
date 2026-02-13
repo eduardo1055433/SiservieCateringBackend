@@ -79,4 +79,21 @@ public class AuthController : ControllerBase
 
         return Ok(new { message = "Usuario creado exitosamente.", userId });
     }
+
+    /// <summary>
+    /// ENDPOINT TEMPORAL: Resetea el password del admin a '123456' usando la librería interna.
+    /// </summary>
+    [HttpGet("reset-admin")]
+    public async Task<IActionResult> ResetAdmin()
+    {
+        var admin = await _db.Usuarios.FirstOrDefaultAsync(u => u.UserId == "admin");
+        if (admin == null) return NotFound("Usuario admin no encontrado");
+
+        // Generar hash usando la MISMA librería que verfica
+        admin.UserPassword = BCrypt.Net.BCrypt.HashPassword("123456");
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Password de admin reseteado a '123456'", newHash = admin.UserPassword });
+    }
 }
+
