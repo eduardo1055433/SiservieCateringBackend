@@ -52,7 +52,7 @@ INSERT INTO general.empresas (emp_schema, emp_nombre, emp_predet) VALUES ('vidag
 -- NOTA: En producción usar una herramienta real para generar el hash. Aqui pondré un placeholder o insertaré uno real si tengo acceso a generar uno.
 -- Para simplificar el ejemplo inicial, insertaremos un usuario de prueba.
 INSERT INTO general.usuarios (user_id, user_email, user_password, user_nombre, user_activo) 
-VALUES ('admin', 'admin@siservie.com', '$2a$11$Qtj/9.9.9.9.9.9.9.9.9.9.9.9.9.9.', 'Administrador Sistema', 1) 
+VALUES ('admin', 'admin@siservie.com', '$2a$11$.jCGaCSa7l0HOXzNrKpZvO73bR.LnwAMcbQ6buyOI.tOGnop/S8O2', 'Administrador Sistema', 1)
 ON CONFLICT DO NOTHING;
 
 -- Relación Demo
