@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using SiservieCatering.API.Data;
 using SiservieCatering.API.Models.Tablas;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SiservieCatering.API.Controllers.Tablas;
 
+[Authorize]
 [ApiController]
 [Route("api/tablas/[controller]")]
 public class VentasCabController : ControllerBase

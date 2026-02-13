@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SiservieCatering.API.Data;
 using SiservieCatering.API.Models.Funciones;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SiservieCatering.API.Controllers.Funciones;
 
+[Authorize]
 [ApiController]
 [Route("api/funciones/[controller]")]
 public class VentasFacturarController : ControllerBase

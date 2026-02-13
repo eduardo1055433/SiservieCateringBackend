@@ -2,11 +2,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SiservieCatering.API.Data;
 using SiservieCatering.API.Models.Tablas.General;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace SiservieCatering.API.Controllers.General;
 
 public record LoginRequest(string UserId, string Password);
-public record LoginResponse(string UserId, string Nombre, List<EmpresaAccess> Empresas);
+public record LoginResponse(string UserId, string Nombre, string Token, List<EmpresaAccess> Empresas);
 public record EmpresaAccess(string Schema, string NombreEmpresa, string Rol, bool Predeterminado);
 
 [ApiController]
@@ -14,10 +18,12 @@ public record EmpresaAccess(string Schema, string NombreEmpresa, string Rol, boo
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IConfiguration _configuration;
 
-    public AuthController(AppDbContext db)
+    public AuthController(AppDbContext db, IConfiguration configuration)
     {
         _db = db;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -53,7 +59,26 @@ public class AuthController : ControllerBase
         if (!accesos.Any())
              return Unauthorized(new { status = "Error", message = "El usuario no tiene empresas asignadas." });
 
-        return Ok(new LoginResponse(usuario.UserId, usuario.UserNombre ?? "", accesos));
+        // 4. Generar JWT Token
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]!);
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, usuario.UserId),
+                new Claim(ClaimTypes.Name, usuario.UserNombre ?? ""),
+                new Claim(ClaimTypes.Email, usuario.UserEmail)
+            }),
+            Expires = DateTime.UtcNow.AddHours(4), // Token dura 4 horas
+            Issuer = _configuration["Jwt:Issuer"],
+            Audience = _configuration["Jwt:Audience"],
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var tokenString = tokenHandler.WriteToken(token);
+
+        return Ok(new LoginResponse(usuario.UserId, usuario.UserNombre ?? "", tokenString, accesos));
     }
 
     /// <summary>
