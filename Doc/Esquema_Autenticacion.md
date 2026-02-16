@@ -64,8 +64,21 @@ Esta es la tabla clave del sistema multi-empresa.
   - El mismo usuario (`juan`) puede ser solo **Cajero** en la empresa B.
   - Y no tener acceso a la empresa C.
 
+### 5. `general.refresh_tokens` (Tokens de Larga Duración)
+Almacena los tokens que permiten renovar el acceso sin pedir credenciales nuevamente.
+- **Seguridad**:
+  - `token`: Cadena aleatoria única.
+  - `expires`: Fecha de caducidad (ej: 7 días).
+  - `revoked`: Si tiene valor, el token ya no sirve (fue usado o invalidado).
+- **Flujo**:
+  - Al hacer Login, se crea un registro aquí.
+  - Al pedir `/refresh-token`, se marca como revocado y se crea uno nuevo (Rotación).
+
 ## Flujo de Login
 Cuando alguien intenta loguearse:
 1. El sistema verifica usuario y contraseña en `general.usuarios`.
 2. Si es correcto, consulta `general.usuario_empresa` para ver a dónde puede entrar.
-3. Retorna un Token que contiene el ID del usuario y la lista de empresas permitidas.
+3. Genera un **JWT** (4 horas) y un **Refresh Token** (7 días).
+4. Guarda el Refresh Token en la BD.
+5. Retorna ambos tokens.
+

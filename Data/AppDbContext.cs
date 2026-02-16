@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Rol> Roles => Set<Rol>();
     public DbSet<UsuarioEmpresa> UsuarioEmpresas => Set<UsuarioEmpresa>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

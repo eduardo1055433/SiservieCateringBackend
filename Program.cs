@@ -7,6 +7,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 
+// Habilitar comportamiento legado de timestamps para evitar errores con UTC/Unspecified
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Services ──────────────────────────────────────────────

@@ -10,8 +10,9 @@ using System.Text;
 namespace SiservieCatering.API.Controllers.General;
 
 public record LoginRequest(string UserId, string Password);
-public record LoginResponse(string UserId, string Nombre, string Token, List<EmpresaAccess> Empresas);
+public record LoginResponse(string UserId, string Nombre, string Token, string RefreshToken, List<EmpresaAccess> Empresas);
 public record EmpresaAccess(string Schema, string NombreEmpresa, string Rol, bool Predeterminado);
+public record RefreshTokenRequest(string Token, string RefreshToken);
 
 [ApiController]
 [Route("api/general/[controller]")]
@@ -27,7 +28,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Inicia sesión y devuelve las empresas a las que el usuario tiene acceso.
+    /// Inicia sesión y devuelve Access Token (corto) + Refresh Token (largo).
     /// </summary>
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
@@ -59,7 +60,80 @@ public class AuthController : ControllerBase
         if (!accesos.Any())
              return Unauthorized(new { status = "Error", message = "El usuario no tiene empresas asignadas." });
 
-        // 4. Generar JWT Token
+        // 4. Generar Tokens
+        var jwtToken = GenerateJwtToken(usuario);
+        var refreshToken = GenerateRefreshToken();
+
+        // 5. Guardar Refresh Token en BD
+        var rtEntity = new RefreshToken
+        {
+            UserId = usuario.UserId,
+            Token = refreshToken,
+            Expires = DateTime.UtcNow.AddDays(7), // Dura 7 días
+            Created = DateTime.UtcNow
+        };
+        _db.RefreshTokens.Add(rtEntity);
+        await _db.SaveChangesAsync();
+
+        return Ok(new LoginResponse(usuario.UserId, usuario.UserNombre ?? "", jwtToken, refreshToken, accesos));
+    }
+
+    /// <summary>
+    /// Renueva el Access Token usando un Refresh Token válido.
+    /// </summary>
+    [HttpPost("refresh-token")]
+    public async Task<ActionResult<LoginResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        var storedToken = await _db.RefreshTokens
+            .Include(rt => rt.Usuario)
+            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
+
+        if (storedToken == null)
+            return Unauthorized(new { status = "Error", message = "Token inválido." });
+
+        if (!storedToken.IsActive)
+            return Unauthorized(new { status = "Error", message = "Token expirado o revocado." });
+
+        // Revocar token usado (Rotación)
+        storedToken.Revoked = DateTime.UtcNow;
+        
+        // Generar nuevos tokens
+        var newJwtToken = GenerateJwtToken(storedToken.Usuario!);
+        var newRefreshToken = GenerateRefreshToken();
+
+        var newRtEntity = new RefreshToken
+        {
+            UserId = storedToken.UserId,
+            Token = newRefreshToken,
+            Expires = DateTime.UtcNow.AddDays(7),
+            Created = DateTime.UtcNow
+        };
+
+        _db.RefreshTokens.Add(newRtEntity);
+        _db.RefreshTokens.Update(storedToken); // Guardar revocación
+        await _db.SaveChangesAsync();
+
+        // Obtener accesos nuevamente (opcional, o devolver lista vacía si el frontend ya la tiene)
+        // Para consistencia con LoginResponse, devolvemos la lista vacía o la consultamos
+        // Aquí devolveremos la lista vacía para ahorrar query, asumiendo que el frontend mantiene el estado
+        // O mejor: consultamos para estar seguros de que sigue teniendo acceso.
+         var accesos = await _db.UsuarioEmpresas
+            .Include(ue => ue.Empresa)
+            .Include(ue => ue.Rol)
+            .Where(ue => ue.UserId == storedToken.UserId && ue.UeActivo == 1)
+            .Select(ue => new EmpresaAccess(
+                ue.EmpSchema, 
+                ue.Empresa!.EmpNombre, 
+                ue.Rol!.RolDescripcion, 
+                ue.UePredeterminado == 1
+            ))
+            .ToListAsync();
+
+        return Ok(new LoginResponse(storedToken.UserId, storedToken.Usuario!.UserNombre ?? "", newJwtToken, newRefreshToken, accesos));
+    }
+
+    private string GenerateJwtToken(Usuario usuario)
+    {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]!);
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -70,55 +144,23 @@ public class AuthController : ControllerBase
                 new Claim(ClaimTypes.Name, usuario.UserNombre ?? ""),
                 new Claim(ClaimTypes.Email, usuario.UserEmail)
             }),
-            Expires = DateTime.UtcNow.AddHours(4), // Token dura 4 horas
+            Expires = DateTime.UtcNow.AddHours(4),
             Issuer = _configuration["Jwt:Issuer"],
             Audience = _configuration["Jwt:Audience"],
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };
         var token = tokenHandler.CreateToken(tokenDescriptor);
-        var tokenString = tokenHandler.WriteToken(token);
-
-        return Ok(new LoginResponse(usuario.UserId, usuario.UserNombre ?? "", tokenString, accesos));
+        return tokenHandler.WriteToken(token);
     }
 
-    /// <summary>
-    /// Registra un nuevo usuario (Solo para propósitos de prueba/inicialización).
-    /// </summary>
-    [HttpPost("register-demo")]
-    public async Task<IActionResult> RegisterDemo(string userId, string password, string nombre, string email)
+    private string GenerateRefreshToken()
     {
-        if (await _db.Usuarios.AnyAsync(u => u.UserId == userId))
-            return BadRequest("El usuario ya existe.");
-
-        var nuevoUsuario = new Usuario
+        var randomNumber = new byte[32];
+        using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
         {
-            UserId = userId,
-            UserEmail = email,
-            UserNombre = nombre,
-            UserPassword = BCrypt.Net.BCrypt.HashPassword(password), // Hash seguro
-            UserActivo = 1
-        };
-
-        _db.Usuarios.Add(nuevoUsuario);
-        await _db.SaveChangesAsync();
-
-        return Ok(new { message = "Usuario creado exitosamente.", userId });
-    }
-
-    /// <summary>
-    /// ENDPOINT TEMPORAL: Resetea el password del admin a '123456' usando la librería interna.
-    /// </summary>
-    [HttpGet("reset-admin")]
-    public async Task<IActionResult> ResetAdmin()
-    {
-        var admin = await _db.Usuarios.FirstOrDefaultAsync(u => u.UserId == "admin");
-        if (admin == null) return NotFound("Usuario admin no encontrado");
-
-        // Generar hash usando la MISMA librería que verfica
-        admin.UserPassword = BCrypt.Net.BCrypt.HashPassword("123456");
-        await _db.SaveChangesAsync();
-
-        return Ok(new { message = "Password de admin reseteado a '123456'", newHash = admin.UserPassword });
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
     }
 }
 
