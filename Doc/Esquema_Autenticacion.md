@@ -9,6 +9,7 @@ erDiagram
     USUARIOS ||--o{ USUARIO_EMPRESA :"tiene acceso"
     EMPRESAS ||--o{ USUARIO_EMPRESA :"pertenece a"
     ROLES ||--o{ USUARIO_EMPRESA :"tiene rol"
+    USUARIOS ||--o{ REFRESH_TOKENS :"posee"
 
     USUARIOS {
         string user_id PK "Identificador único (Login)"
@@ -16,6 +17,14 @@ erDiagram
         string user_password "Hash BCrypt"
         string user_nombre "Nombre completo"
         int user_activo "1=Activo, 0=Inactivo"
+    }
+
+    REFRESH_TOKENS {
+        int id PK
+        string user_id FK
+        string token "Hash/Random"
+        datetime expires
+        datetime revoked
     }
 
     EMPRESAS {
