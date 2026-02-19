@@ -20,8 +20,22 @@ public class VentasFacturarController : ControllerBase
     }
 
     /// <summary>
-    /// Ejecuta la función base.ventas_facturar_x_ticket con los parámetros indicados.
+    /// Consulta el reporte detallado de Ventas Facturadas (función base.ventas_facturar_x_ticket).
     /// </summary>
+    /// <remarks>
+    /// Este endpoint ejecuta una función de base de datos que devuelve el desglose de ventas por ticket.
+    /// 
+    /// **Parámetros:**
+    /// - `schema`: Esquema de la empresa (ej: 'vidagong').
+    /// - `ticket`: Filtro específico de ticket o 'TODOS'.
+    /// - `fechaInicio` / `fechaFin`: Rango de fechas (YYYY-MM-DD).
+    /// 
+    /// **Retorna:**
+    /// - Lista de objetos `VentaFacturarResult` con detalles como fecha, montos (subvención, a pagar), y cliente.
+    /// </remarks>
+    /// <response code="200">Devuelve la lista de ventas encontradas.</response>
+    /// <response code="401">No autorizado.</response>
+    /// <response code="500">Error interno al ejecutar la consulta.</response>
     /// <param name="schema">Esquema PostgreSQL (ej: vidagong)</param>
     /// <param name="ticket">Filtro de ticket (TODOS = sin filtro)</param>
     /// <param name="fechaInicio">Fecha inicio (ej: 2024-08-01)</param>
