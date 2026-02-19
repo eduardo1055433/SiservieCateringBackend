@@ -120,6 +120,17 @@ Obtiene la lista de Puntos de Venta (POS) del esquema indicado.
 ]
 ```
 
+### GET `/api/catalogo/servicios?schema={schema}`
+Obtiene la lista de Servicios del esquema indicado.
+**Parámetros:** `schema` (default: `vidagong`).
+**Respuesta Exitosa (200 OK):**
+```json
+[
+  { "label": "ALMUERZO", "value": "ALMUERZO" },
+  { "label": "CENA", "value": "CENA" }
+]
+```
+
 ## Seguridad
 Todos los endpoints (excepto Login y RefreshToken) requieren un header de autorización:
 `Authorization: Bearer <su_token_jwt>`

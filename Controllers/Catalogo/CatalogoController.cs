@@ -48,6 +48,34 @@ public class CatalogoController : ControllerBase
             return StatusCode(500, new { status = "Error", message = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Obtiene el catálogo de Servicios (serv_id) del esquema indicado.
+    /// </summary>
+    /// <param name="schema">Esquema PostgreSQL (Default: vidagong)</param>
+    /// <returns>Lista de Servicios (Value=serv_id, Label=serv_id).</returns>
+    [HttpGet("servicios")]
+    public async Task<ActionResult<IEnumerable<CatalogoItem>>> GetServicios([FromQuery] string schema = "vidagong")
+    {
+        try
+        {
+           if (string.IsNullOrWhiteSpace(schema) || !System.Text.RegularExpressions.Regex.IsMatch(schema, "^[a-zA-Z0-9_]+$"))
+                return BadRequest("Esquema inválido");
+
+            var connection = _db.Database.GetDbConnection();
+            
+            // El usuario solo pidió serv_id, así que lo usamos para Value y Label
+            var sql = $"SELECT serv_id as Value, serv_id as Label FROM {schema}.servicios";
+            
+            var result = await connection.QueryAsync<CatalogoItem>(sql);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { status = "Error", message = ex.Message });
+        }
+    }
     /// <summary>
     /// Obtiene el catálogo de Tipos de Cliente.
     /// </summary>
