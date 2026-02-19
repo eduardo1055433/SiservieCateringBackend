@@ -1,3 +1,15 @@
 namespace SiservieCatering.API.Models.Catalogo;
 
-public record CatalogoItem(string Label, string Value);
+public class CatalogoItem
+{
+    public string Label { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+
+    public CatalogoItem() { }
+
+    public CatalogoItem(string label, string value)
+    {
+        Label = label;
+        Value = value;
+    }
+}

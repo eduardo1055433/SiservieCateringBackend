@@ -98,6 +98,28 @@ Obtiene la lista de TIPOS DE CLIENTE disponibles para filtros.
 ]
 ```
 
+### GET `/api/catalogo/tipo-venta`
+Obtiene la lista de TIPOS DE VENTA disponibles para filtros.
+**Respuesta Exitosa (200 OK):**
+```json
+[
+  { "label": "TODOS", "value": "TODOS" },
+  { "label": "BODEGA", "value": "B" },
+  { "label": "RAPIDO", "value": "R" }
+]
+```
+
+### GET `/api/catalogo/pos?schema={schema}`
+Obtiene la lista de Puntos de Venta (POS) del esquema indicado.
+**Parámetros:** `schema` (default: `vidagong`).
+**Respuesta Exitosa (200 OK):**
+```json
+[
+  { "label": "POS Principal", "value": "001-001" },
+  { "label": "Caja 2", "value": "001-002" }
+]
+```
+
 ## Seguridad
 Todos los endpoints (excepto Login y RefreshToken) requieren un header de autorización:
 `Authorization: Bearer <su_token_jwt>`
